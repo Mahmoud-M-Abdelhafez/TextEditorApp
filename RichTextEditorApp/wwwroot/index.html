@@ -1,0 +1,126 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet" />
+    <meta charset="utf-8" />
+    <title></title>
+</head>
+<body>
+    <!-- Include stylesheet -->
+
+    <div id="editor-container" style="height: 200px; margin-bottom: 20px;"></div>
+
+    <!-- Save and Load buttons -->
+    <button onclick="saveContent()">Save Content</button>
+
+    <!-- Input for Content ID and Load Button -->
+    <input type="text" id="content-id" placeholder="Enter content ID to load">
+    <button onclick="loadContent()">Load Content</button>
+    <!-- Create the editor container -->
+    <div id="editor">
+        <p>Hello World!</p>
+        <p>Some initial <strong>bold</strong> text</p>
+        <p><br /></p>
+    </div>
+    <button onclick="undo()">Undo</button>
+    <button onclick="redo()">Redo</button>
+
+    <!-- Include the Quill library -->
+    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+
+    <!-- Initialize Quill editor -->
+    <script>
+        const quill = new Quill('#editor', {
+            theme: 'snow',
+            modules: {
+                toolbar: [
+                    [{ header: [1, 2, false] }],
+                    ['bold', 'italic', 'underline'],
+                    [{ 'color': [] }, { 'background': [] }],
+                    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                    ['clean'],
+                    ['undo', 'redo']
+                ]
+            }
+
+        });
+
+        // Initialize undo and redo stacks
+        var undoStack = [];
+        var redoStack = [];
+
+        // Function to save the current state
+        function saveState() {
+            undoStack.push(quill.root.innerHTML);  // Save current content to undoStack
+            redoStack = [];  // Clear redo stack whenever a new action is performed
+        }
+
+        // Save initial state
+        saveState();
+
+        // Listen for changes in the editor and save state on each change
+        quill.on('text-change', function () {
+            saveState();
+        });
+
+        // Undo function
+        function undo() {
+            if (undoStack.length > 1) {  // Make sure there’s something to undo
+                redoStack.push(undoStack.pop());  // Move last state to redoStack
+                quill.root.innerHTML = undoStack[undoStack.length - 1];  // Restore previous state
+            }
+        }
+
+        // Redo function
+        function redo() {
+            if (redoStack.length > 0) {  // Ensure there’s something to redo
+                undoStack.push(redoStack.pop());  // Move last undone state back to undoStack
+                quill.setContents(undoStack[undoStack.length - 1]);  // Restore redone state
+            }
+        }
+
+        // connect to API
+        function saveContent() {
+            var content = quill.root.innerHTML;  // Get the HTML content
+            fetch('/api/TextContent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Content saved:', data);
+                    alert('Content saved successfully!');
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Function to load content from API by ID
+        function loadContent() {
+            var contentId = document.getElementById('content-id').value;  // Get ID from input
+            if (!contentId) {
+                alert("Please enter a content ID to load.");
+                return;
+            }
+
+            fetch(`/api/TextContent/${contentId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("Content not found");
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    quill.root.innerHTML = data.content;  // Set HTML content in editor
+                    console.log('Content loaded:', data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert("Error loading content: " + error.message);
+                });
+        }
+
+
+    </script>
+</body>
+</html>

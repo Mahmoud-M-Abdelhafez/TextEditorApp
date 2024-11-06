@@ -1,0 +1,6 @@
+@RichTextEditorApp_HostAddress = http://localhost:5195
+
+GET {{RichTextEditorApp_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
